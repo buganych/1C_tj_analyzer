@@ -1,0 +1,34 @@
+---
+description: Только TLOCK (ожидания, WaitConnections, виновники). Не использовать для «всех проблем» — см. tj_analyzer.
+alwaysApply: true
+---
+
+# tlock_analyzer — только ожидания TLOCK
+
+**Маршрутизация:** [.cursor/rules/lock-analyzers.mdc](lock-analyzers.mdc)
+
+## Когда использовать
+
+Ключевые слова: **TLOCK**, WaitConnections, ожидание блокировки, виновник ожидания, «кто держит lock», управляемые блокировки (ожидание).
+
+Пользователь **не** просит таймауты и **не** просит дедлоки в том же запросе.
+
+Если запрос общий («все проблемы блокировок») → **`python -m tj_analyzer`**, не эта тулза.
+
+## Команда
+
+```bash
+python -m tlock_analyzer --source click --log-id <LOG_ID> --output both
+```
+
+Альтернатива в сводном режиме: `python -m tj_analyzer --only tlock`
+
+## Логика
+
+Жертвы: `TLOCK` с `wait_connections` → транзакция виновника → пересечение блокировок (`tj_common`).
+
+BSL-эталон: `bmp/CommonModules/АнализTLOCK` (`СтартClick`).
+
+```sql
+SELECT DISTINCT log_id FROM onec_logs.tj_tlock WHERE wait_connections != '';
+```

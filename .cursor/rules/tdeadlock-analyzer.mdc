@@ -1,0 +1,36 @@
+---
+description: Только TDEADLOCK (взаимоблокировки, DeadlockConnectionIntersections, графы). Не использовать для «всех проблем» — см. tj_analyzer.
+alwaysApply: true
+---
+
+# tdeadlock_analyzer — только взаимоблокировки TDEADLOCK
+
+**Маршрутизация:** [.cursor/rules/lock-analyzers.mdc](lock-analyzers.mdc)
+
+## Когда использовать
+
+Ключевые слова: **TDEADLOCK**, взаимоблокировка, deadlock, `DeadlockConnectionIntersections`, цикл 2–3 соединений, граф блокировок.
+
+Не запрос на «все проблемы» — тогда **`python -m tj_analyzer`**.
+
+## Команда
+
+```bash
+python -m tdeadlock_analyzer --source click --log-id <LOG_ID> --output both
+```
+
+С базой: `--database <ProcessName>`. С исходниками: `--config-catalog <path>`.
+
+Альтернатива: `python -m tj_analyzer --only tdeadlock`
+
+Единичный кейс: `--at "..." --connect-id ... --session-id ... --host ...`
+
+## Логика
+
+Разбор `DeadlockConnectionIntersections`, участники, таймлайн, тип взаимоблокировки, JSON-графы.
+
+BSL-эталон: `bmp/CommonModules/АнализВзаимоблокировок1C` (`СтартКлик`).
+
+```sql
+SELECT count() FROM onec_logs.tj_tdeadlock WHERE log_id = '<LOG_ID>';
+```

@@ -1,0 +1,94 @@
+---
+description: Маршрутизация задач по анализу блокировок 1С — все проблемы (tj_analyzer) или по типу (tlock/ttimeout/tdeadlock)
+alwaysApply: true
+---
+
+# Анализаторы блокировок 1С — выбор команды
+
+Репозиторий: `1c_tlock_analyzer`. **Не** пиши одноразовые скрипты и **не** дублируй BSL из `bmp/CommonModules/`.
+
+Перед первым запуском в сессии: `pip install -e .` из корня репозитория.
+
+## Как понять задачу пользователя
+
+| Намерение пользователя | Команда | Когда |
+|------------------------|---------|--------|
+| **Все проблемы блокировок сразу** | `python -m tj_analyzer` | Не указан один тип; «всё», «все», «полный», «сводный», «комплексный» анализ |
+| Только **ожидания TLOCK** | `python -m tlock_analyzer` | TLOCK, WaitConnections, «кто держит блокировку», «виновник ожидания» |
+| Только **таймауты TTIMEOUT** | `python -m ttimeout_analyzer` | TTIMEOUT, таймаут ожидания, «истёк таймаут» |
+| Только **взаимоблокировки TDEADLOCK** | `python -m tdeadlock_analyzer` | TDEADLOCK, deadlock, DeadlockConnectionIntersections, цикл, граф дедлока |
+| **Подмножество** типов | `python -m tj_analyzer --only ...` | «только tlock и дедлок», «без таймаутов» |
+
+Если сомневаешься и запрос общий («разбери блокировки в ТЖ», «найди проблемы») — используй **`tj_analyzer`**.
+
+## Примеры формулировок → команда
+
+**Все сразу (`tj_analyzer`):**
+- «Найди все проблемы блокировок за вчера»
+- «Проанализируй ТЖ по блокировкам»
+- «Ожидания, таймауты и дедлоки по log_id …»
+- «Сводный отчёт по блокировкам»
+
+**По отдельности:**
+- «Только TLOCK» / «ожидания без таймаутов» → `tlock_analyzer` или `tj_analyzer --only tlock`
+- «Только таймауты» / «TTIMEOUT» → `ttimeout_analyzer` или `tj_analyzer --only ttimeout`
+- «Только взаимоблокировки» / «дедлок» → `tdeadlock_analyzer` или `tj_analyzer --only tdeadlock`
+
+## Общие параметры CLI
+
+| Параметр | Назначение |
+|----------|------------|
+| `--source click` | ClickHouse `onec_logs` (по умолчанию) |
+| `--log-id` | **Обязателен** для click; можно через запятую |
+| `--database` | Фильтр `process_name` (AND); важно для TDEADLOCK |
+| `--from` / `--to` | Период (опционально) |
+| `--hosts` | Хосты (опционально) |
+| `--min-duration` | Мин. длительность ожидания, сек (TLOCK/TTIMEOUT) |
+| `--output both` | JSON + текст (рекомендуется) |
+| `--file` + `--base-date` | Файл plain/json вместо CH |
+| `--config-catalog` | Выгрузка конфигурации 1С (TDEADLOCK: дерево контекста) |
+
+ClickHouse: `CLICKHOUSE_HOST`, `CLICKHOUSE_PORT`, `CLICKHOUSE_USER`, `CLICKHOUSE_PASSWORD`, `CLICKHOUSE_DATABASE` — см. `.cursor/mcp.json`.
+
+## Шаблоны команд
+
+```bash
+# ВСЕ проблемы (рекомендуется по умолчанию)
+python -m tj_analyzer --source click --log-id <LOG_ID> --output both
+
+# С периодом и базой
+python -m tj_analyzer --source click --log-id <LOG_ID> --database <IB> --from "..." --to "..." --output both
+
+# Часть анализаторов
+python -m tj_analyzer --source click --log-id <LOG_ID> --only tlock,ttimeout --output both
+
+# Только один тип (отдельная тулза)
+python -m tlock_analyzer --source click --log-id <LOG_ID> --output both
+python -m ttimeout_analyzer --source click --log-id <LOG_ID> --output both
+python -m tdeadlock_analyzer --source click --log-id <LOG_ID> --output both
+```
+
+## Таблицы ClickHouse
+
+| Тип | Жертвы / кейсы | TLOCK виновника | Транзакции |
+|-----|----------------|-----------------|------------|
+| TLOCK | `tj_tlock` | `tj_tlock` | `tj_sdbl` / `tj_raw` |
+| TTIMEOUT | `tj_ttimeout` | `tj_tlock` | `tj_sdbl` / `tj_raw` |
+| TDEADLOCK | `tj_tdeadlock` | `tj_tlock` | `tj_sdbl` / `tj_raw` |
+
+## Справка по log_id
+
+```sql
+SELECT DISTINCT log_id FROM onec_logs.tj_tlock WHERE wait_connections != '';
+SELECT DISTINCT log_id FROM onec_logs.tj_ttimeout WHERE wait_connections != '';
+SELECT count() FROM onec_logs.tj_tdeadlock WHERE log_id = '<LOG_ID>';
+```
+
+## Детальные правила по типу
+
+- Сводный: [.cursor/rules/tj-analyzer.mdc](tj-analyzer.mdc)
+- TLOCK: [.cursor/rules/tlock-analyzer.mdc](tlock-analyzer.mdc)
+- TTIMEOUT: [.cursor/rules/ttimeout-analyzer.mdc](ttimeout-analyzer.mdc)
+- TDEADLOCK: [.cursor/rules/tdeadlock-analyzer.mdc](tdeadlock-analyzer.mdc)
+
+Подробности: [README.md](README.md), [AGENTS.md](AGENTS.md).

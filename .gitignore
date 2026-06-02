@@ -1,0 +1,13 @@
+bmp/
+
+# Secrets (ClickHouse, Grafana tokens)
+.cursor/mcp.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+dist/
+*.egg-info/
+.pytest_cache/

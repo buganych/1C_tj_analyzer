@@ -1,0 +1,32 @@
+---
+description: Только TTIMEOUT (таймаут ожидания блокировки). Не использовать для «всех проблем» — см. tj_analyzer.
+alwaysApply: true
+---
+
+# ttimeout_analyzer — только таймауты TTIMEOUT
+
+**Маршрутизация:** [.cursor/rules/lock-analyzers.mdc](lock-analyzers.mdc)
+
+## Когда использовать
+
+Ключевые слова: **TTIMEOUT**, таймаут ожидания, timeout lock, «истёкло ожидание».
+
+Не TLOCK (просто ожидание без таймаута) и не TDEADLOCK.
+
+Если запрос общий → **`python -m tj_analyzer`**.
+
+## Команда
+
+```bash
+python -m ttimeout_analyzer --source click --log-id <LOG_ID> --output both
+```
+
+Альтернатива: `python -m tj_analyzer --only ttimeout`
+
+## Логика
+
+Жертвы: `tj_ttimeout`, виновники и TLOCK — как у `tlock-analyzer`.
+
+```sql
+SELECT DISTINCT log_id FROM onec_logs.tj_ttimeout WHERE wait_connections != '';
+```

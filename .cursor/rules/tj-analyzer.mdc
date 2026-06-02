@@ -1,0 +1,33 @@
+---
+description: Сводный анализ — python -m tj_analyzer (TLOCK+TTIMEOUT+TDEADLOCK). Использовать когда нужны ВСЕ проблемы блокировок.
+alwaysApply: true
+---
+
+# tj_analyzer — все проблемы блокировок
+
+**Маршрутизация:** [.cursor/rules/lock-analyzers.mdc](lock-analyzers.mdc)
+
+## Когда использовать эту тулзу
+
+- Пользователь просит **все** / **сводный** / **полный** анализ блокировок
+- Не указан один тип (TLOCK / TTIMEOUT / TDEADLOCK)
+- Нужен один отчёт с `summary` и тремя секциями
+
+## Когда НЕ использовать
+
+- Явно только TLOCK → `tlock_analyzer`
+- Явно только TTIMEOUT → `ttimeout_analyzer`
+- Явно только TDEADLOCK → `tdeadlock_analyzer`
+
+## Команда
+
+```bash
+python -m tj_analyzer --source click --log-id <LOG_ID> --output both
+```
+
+Частично: `--only tlock,ttimeout,tdeadlock`
+
+## Выход
+
+- JSON: `analyzer: "unified"`, `summary`, `tlock`, `ttimeout`, `tdeadlock`
+- Текст: три раздела подряд
