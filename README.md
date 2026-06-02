@@ -2,12 +2,12 @@
 
 Python tools for analyzing 1C tech journal lock events: TLOCK waits, TTIMEOUT, and TDEADLOCK cycles.
 
-| Tool | Event | ClickHouse table | BSL reference |
-|------|-------|------------------|---------------|
-| **`tj-analyzer`** | **all three** | all tables | — |
-| `tlock-analyzer` | TLOCK (wait) | `tj_tlock` | `АнализTLOCK` |
-| `ttimeout-analyzer` | TTIMEOUT | `tj_ttimeout` | — |
-| `tdeadlock-analyzer` | TDEADLOCK | `tj_tdeadlock` | `АнализВзаимоблокировок1C` |
+| Tool | Event | ClickHouse table | 
+|------|-------|------------------|
+| **`tj-analyzer`** | **all three** | all tables | 
+| `tlock-analyzer` | TLOCK (wait) | `tj_tlock` | 
+| `ttimeout-analyzer` | TTIMEOUT | `tj_ttimeout` | 
+| `tdeadlock-analyzer` | TDEADLOCK | `tj_tdeadlock` | 
 
 Shared code: `tj_common/` (lock comparison, sources, reports). TLOCK/TTIMEOUT share the victim→culprit pipeline; TDEADLOCK uses a separate cycle analyzer on `DeadlockConnectionIntersections`.
 
