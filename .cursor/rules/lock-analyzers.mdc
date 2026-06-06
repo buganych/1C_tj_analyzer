@@ -45,7 +45,8 @@ alwaysApply: true
 | `--file-like` | ClickHouse: `file LIKE` (опционально), напр. `%tlock_1607235%` — только отбор жертв |
 | `--hosts` | Хосты (опционально) |
 | `--min-duration` | Мин. длительность ожидания, сек (TLOCK/TTIMEOUT) |
-| `--output both` | JSON + текст (рекомендуется) |
+| `--report-dir` | **Обязательно:** каталог с `analysis.json`, `analysis.md`, `analysis.html` — см. [report-output.mdc](report-output.mdc) |
+| `--output both` | JSON + текст в stdout (если `--report-dir` не задан) |
 | `--file` + `--base-date` | Файл plain/json вместо CH |
 | `--config-catalog` | Выгрузка конфигурации 1С (TDEADLOCK: дерево контекста) |
 
@@ -55,18 +56,18 @@ ClickHouse: `CLICKHOUSE_HOST`, `CLICKHOUSE_PORT`, `CLICKHOUSE_USER`, `CLICKHOUSE
 
 ```bash
 # ВСЕ проблемы (рекомендуется по умолчанию)
-python -m tj_analyzer --source click --log-id <LOG_ID> --output both
+python -m tj_analyzer --source click --log-id <LOG_ID> --report-dir reports
 
 # С периодом и базой
-python -m tj_analyzer --source click --log-id <LOG_ID> --database <IB> --from "..." --to "..." --output both
+python -m tj_analyzer --source click --log-id <LOG_ID> --database <IB> --from "..." --to "..." --report-dir reports/<LOG_ID>
 
 # Часть анализаторов
-python -m tj_analyzer --source click --log-id <LOG_ID> --only tlock,ttimeout --output both
+python -m tj_analyzer --source click --log-id <LOG_ID> --only tlock,ttimeout --report-dir reports
 
 # Только один тип (отдельная тулза)
-python -m tlock_analyzer --source click --log-id <LOG_ID> --output both
-python -m ttimeout_analyzer --source click --log-id <LOG_ID> --output both
-python -m tdeadlock_analyzer --source click --log-id <LOG_ID> --output both
+python -m tlock_analyzer --source click --log-id <LOG_ID> --report-dir reports
+python -m ttimeout_analyzer --source click --log-id <LOG_ID> --report-dir reports
+python -m tdeadlock_analyzer --source click --log-id <LOG_ID> --report-dir reports
 ```
 
 ## Таблицы ClickHouse
@@ -91,5 +92,6 @@ SELECT count() FROM onec_logs.tj_tdeadlock WHERE log_id = '<LOG_ID>';
 - TLOCK: [.cursor/rules/tlock-analyzer.mdc](tlock-analyzer.mdc)
 - TTIMEOUT: [.cursor/rules/ttimeout-analyzer.mdc](ttimeout-analyzer.mdc)
 - TDEADLOCK: [.cursor/rules/tdeadlock-analyzer.mdc](tdeadlock-analyzer.mdc)
+- Отчёты JSON/MD/HTML: [.cursor/rules/report-output.mdc](report-output.mdc)
 
 Подробности: [README.md](README.md), [AGENTS.md](AGENTS.md).

@@ -1,0 +1,52 @@
+---
+description: При анализе блокировок всегда сохранять JSON, Markdown и HTML в каталог reports
+alwaysApply: true
+---
+
+# Отчёты анализа блокировок
+
+**Маршрутизация анализаторов:** [.cursor/rules/lock-analyzers.mdc](lock-analyzers.mdc)
+
+При **любом** запуске анализа блокировок (TLOCK / TTIMEOUT / TDEADLOCK / сводный `tj_analyzer`) **обязательно** указывай `--report-dir`.
+
+## Что создаётся
+
+В каталоге появляются три файла:
+
+| Файл | Формат |
+|------|--------|
+| `analysis.json` | машиночитаемый результат |
+| `analysis.md` | отчёт для чтения в редакторе |
+| `analysis.html` | отчёт с оглавлением и раскрываемым контекстом |
+
+Каталог `reports/` в `.gitignore` — не коммить отчёты.
+
+## Куда писать
+
+- `--report-dir reports` — автоподкаталог `reports/<анализатор>_<log_id>_<timestamp>/`
+- `--report-dir reports/<log_id>` — явный каталог для конкретного log_id
+
+## Шаблоны команд
+
+```bash
+# Сводный анализ (рекомендуется)
+python -m tj_analyzer --source click --log-id <LOG_ID> --report-dir reports
+
+# С периодом и базой
+python -m tj_analyzer --source click --log-id <LOG_ID> --database <IB> \
+  --from "..." --to "..." --report-dir reports/<LOG_ID>
+
+# Только один тип
+python -m tlock_analyzer --source click --log-id <LOG_ID> --report-dir reports
+python -m ttimeout_analyzer --source click --log-id <LOG_ID> --report-dir reports
+python -m tdeadlock_analyzer --source click --log-id <LOG_ID> --report-dir reports
+
+# Файл ТЖ вместо ClickHouse
+python -m tj_analyzer --source plain --file <path> --base-date "..." --report-dir reports
+```
+
+## Поведение агента
+
+1. Запусти анализатор с `--report-dir` (не ограничивайся `--output both` в stdout).
+2. После выполнения сообщи пользователю пути к `analysis.json`, `analysis.md`, `analysis.html`.
+3. Для презентации результатов открывай/цитируй **HTML** или **Markdown**, не сырой JSON.

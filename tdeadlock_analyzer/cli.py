@@ -14,6 +14,8 @@ from tj_common.cli_shared import (
     build_deadlock_clickhouse_source,
     build_deadlock_filters,
     format_deadlock_filter_summary,
+    print_report_paths,
+    write_deadlock_analysis_reports,
 )
 from tj_common.report.deadlock_json import render_deadlock_json
 from tj_common.report.deadlock_text import render_deadlock_text
@@ -63,6 +65,11 @@ def main(
         None, "--config-catalog", help="Exported 1C config directory for source lookup"
     ),
     output: OutputType = typer.Option(OutputType.both, "--output"),
+    report_dir: Optional[str] = typer.Option(
+        None,
+        "--report-dir",
+        help="Write analysis.json, analysis.md, analysis.html to this directory",
+    ),
 ):
     """Analyze TDEADLOCK cases from ClickHouse or TJ files."""
     if ctx.invoked_subcommand is not None:
@@ -111,12 +118,24 @@ def main(
     if result.errors:
         console.print(f"[yellow]Errors: {len(result.errors)}[/yellow]")
 
-    if output in (OutputType.json, OutputType.both):
-        console.print(render_deadlock_json(result))
-    if output in (OutputType.text, OutputType.both):
-        if output == OutputType.both:
-            console.print("\n" + "=" * 40 + " TEXT REPORT " + "=" * 40 + "\n")
-        console.print(render_deadlock_text(result))
+    meta = format_deadlock_filter_summary(filters, source)
+    if report_dir:
+        paths = write_deadlock_analysis_reports(
+            report_dir,
+            result,
+            render_json=render_deadlock_json,
+            log_ids=filters.log_ids,
+            database=database,
+            meta=meta,
+        )
+        print_report_paths(console, paths)
+    else:
+        if output in (OutputType.json, OutputType.both):
+            console.print(render_deadlock_json(result))
+        if output in (OutputType.text, OutputType.both):
+            if output == OutputType.both:
+                console.print("\n" + "=" * 40 + " TEXT REPORT " + "=" * 40 + "\n")
+            console.print(render_deadlock_text(result))
 
 
 def app_entry():

@@ -27,7 +27,7 @@ Russian triggers: «все проблемы блокировок», «сводн
 2. Default run:
 
    ```bash
-   python -m tj_analyzer --source click --log-id <LOG_ID> --output both
+   python -m tj_analyzer --source click --log-id <LOG_ID> --report-dir reports
    ```
 
 3. Subset:

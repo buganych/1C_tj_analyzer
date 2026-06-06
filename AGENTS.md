@@ -8,7 +8,7 @@
 
 ```
 Найди все проблемы блокировок в ClickHouse, log_id teletrade_tj_logs, за последний час.
-Запусти python -m tj_analyzer, output both.
+Запусти python -m tj_analyzer --report-dir reports.
 ```
 
 ```
@@ -48,7 +48,7 @@ tj_analyzer --only tlock,tdeadlock   # без TTIMEOUT
 | Только TDEADLOCK | `python -m tdeadlock_analyzer` |
 
 ```bash
-python -m tj_analyzer --source click --log-id <LOG_ID> --output both
+python -m tj_analyzer --source click --log-id <LOG_ID> --report-dir reports
 ```
 
 ## Skills и правила
@@ -56,6 +56,7 @@ python -m tj_analyzer --source click --log-id <LOG_ID> --output both
 | Режим | Rule | Skill |
 |-------|------|-------|
 | Маршрутизация | [lock-analyzers.mdc](.cursor/rules/lock-analyzers.mdc) | — |
+| Отчёты JSON/MD/HTML | [report-output.mdc](.cursor/rules/report-output.mdc) | — |
 | Все сразу | [tj-analyzer.mdc](.cursor/rules/tj-analyzer.mdc) | [tj-analyzer/SKILL.md](.cursor/skills/tj-analyzer/SKILL.md) |
 | TLOCK | [tlock-analyzer.mdc](.cursor/rules/tlock-analyzer.mdc) | [tlock-analyzer/SKILL.md](.cursor/skills/tlock-analyzer/SKILL.md) |
 | TTIMEOUT | [ttimeout-analyzer.mdc](.cursor/rules/ttimeout-analyzer.mdc) | [ttimeout-analyzer/SKILL.md](.cursor/skills/ttimeout-analyzer/SKILL.md) |

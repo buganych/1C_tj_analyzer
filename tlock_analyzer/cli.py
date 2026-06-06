@@ -15,7 +15,9 @@ from tj_common.cli_shared import (
     build_file_source,
     build_filters,
     format_filter_summary,
+    print_report_paths,
     print_victim_analysis_output,
+    write_victim_analysis_reports,
 )
 from tj_common.utils import apply_mcp_clickhouse_env
 from tj_common.report.markdown import render_markdown as _render_markdown
@@ -66,6 +68,11 @@ def main(
     clickhouse_password: Optional[str] = typer.Option(None, "--clickhouse-password"),
     clickhouse_db: Optional[str] = typer.Option(None, "--clickhouse-db"),
     output: OutputType = typer.Option(OutputType.both, "--output"),
+    report_dir: Optional[str] = typer.Option(
+        None,
+        "--report-dir",
+        help="Write analysis.json, analysis.md, analysis.html to this directory",
+    ),
 ):
     """Find TLOCK victims and analyze culprit transactions."""
     if ctx.invoked_subcommand is not None:
@@ -98,15 +105,28 @@ def main(
     if result.errors:
         console.print(f"[yellow]Errors: {len(result.errors)}[/yellow]")
 
-    print_victim_analysis_output(
-        console,
-        result,
-        output,
-        render_json=_render_json,
-        render_text=_render_text,
-        render_markdown=_render_markdown,
-        labels=TLOCK_LABELS,
-    )
+    if report_dir:
+        paths = write_victim_analysis_reports(
+            report_dir,
+            result,
+            render_json=_render_json,
+            render_markdown=_render_markdown,
+            labels=TLOCK_LABELS,
+            log_ids=filters.log_ids,
+            database=database,
+            meta=format_filter_summary(filters, source),
+        )
+        print_report_paths(console, paths)
+    else:
+        print_victim_analysis_output(
+            console,
+            result,
+            output,
+            render_json=_render_json,
+            render_text=_render_text,
+            render_markdown=_render_markdown,
+            labels=TLOCK_LABELS,
+        )
 
 
 def app_entry():

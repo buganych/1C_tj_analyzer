@@ -305,6 +305,91 @@ def _participant_column_title(participant: Participant) -> str:
     return participant.role or f"connect {participant.connect_id}"
 
 
+def _context_label(context: str) -> str:
+    from tj_common.report.summary_stats import context_label
+
+    return context_label(context)
+
+
+def _participant_block_wait_contexts(
+    participant: Participant, case: DeadlockCase
+) -> tuple[str, str]:
+    block_ctx = ""
+    wait_ctx = ""
+    for ev in case.timeline:
+        if ev.role != participant.role or not ev.wait:
+            continue
+        ctx = _context_label(ev.wait.context)
+        if not ctx:
+            continue
+        if ev.is_wait:
+            wait_ctx = ctx
+        else:
+            block_ctx = ctx
+    for wait in participant.waits:
+        ctx = _context_label(wait.context)
+        if not ctx:
+            continue
+        if wait.is_wait:
+            if not wait_ctx:
+                wait_ctx = ctx
+        elif not block_ctx:
+            block_ctx = ctx
+    return block_ctx, wait_ctx
+
+
+def deadlock_context_matrix_columns(
+    case: DeadlockCase,
+) -> list[tuple[str, str, str]]:
+    """Per participant: title, successful lock context, wait context."""
+    participants = [p for p in case.participants() if p.connect_id]
+    columns: list[tuple[str, str, str]] = []
+    for participant in participants:
+        block_ctx, wait_ctx = _participant_block_wait_contexts(participant, case)
+        columns.append(
+            (
+                _participant_column_title(participant),
+                block_ctx,
+                wait_ctx,
+            )
+        )
+    return columns
+
+
+def build_cross_matrix_contexts(case: DeadlockCase) -> str:
+    """Context matrix: participants, then block and wait last context lines."""
+    columns = deadlock_context_matrix_columns(case)
+    if not columns:
+        return ""
+
+    titles = [title for title, _, _ in columns]
+    block_cells = [block or "—" for _, block, _ in columns]
+    wait_cells = [wait or "—" for _, _, wait in columns]
+    label_width = max(len("Ожидание"), 12)
+    col_widths = [label_width]
+    for title, block, wait in columns:
+        col_widths.append(
+            max(len(title), len(block or "—"), len(wait or "—"), 8)
+        )
+
+    def format_row(cells: list[str]) -> str:
+        return (
+            "|"
+            + "|".join(cell.center(width) for cell, width in zip(cells, col_widths))
+            + "|"
+        )
+
+    sep = "|" + "|".join("-" * width for width in col_widths) + "|"
+    return "\n".join(
+        [
+            format_row([""] + titles),
+            sep,
+            format_row(["Блокировка", *block_cells]),
+            format_row(["Ожидание", *wait_cells]),
+        ]
+    )
+
+
 def build_cross_matrix(case: DeadlockCase) -> str:
     """ASCII cross matrix V/X for participants."""
     participants = [p for p in case.participants() if p.connect_id]
@@ -448,6 +533,7 @@ def finalize_case(case: DeadlockCase) -> None:
     case.timeline = sort_timeline(case.timeline)
     case.deadlock_type = classify_deadlock_type(case.victim)
     case.cross_matrix = build_cross_matrix(case)
+    case.cross_matrix_contexts = build_cross_matrix_contexts(case)
     case.graph_wait_block = build_graph_wait_block(case)
     case.graph_locks = build_graph_locks(case)
     case.timeline_text = build_timeline_text(case)

@@ -6,6 +6,7 @@ from tj_common.analysis.deadlock import (
     DEADLOCK_TYPE_ESCALATION,
     DEADLOCK_TYPE_ORDER,
     build_cross_matrix,
+    build_cross_matrix_contexts,
     classify_deadlock_type,
     parse_deadlock_intersections,
     sort_timeline,
@@ -117,6 +118,119 @@ def _timeline_ts(ev: TimelineEvent) -> datetime:
     if ev.wait and ev.wait.ts:
         return ev.wait.ts
     return datetime.fromisoformat(ev.time.replace("T", " "))
+
+
+def test_cross_matrix_contexts_block_and_wait():
+    case = DeadlockCase(
+        event=TdeadlockEvent(ts=datetime.now(), connect_id="1"),
+        victim=Participant(
+            connect_id="1",
+            role="Участник 1 (Жертва)",
+            waits=[
+                ParticipantWait(
+                    ts_str="t1",
+                    ts=datetime.now(),
+                    connect_id="1",
+                    context="Модуль.ПроцедураА\nБлокЖертвы : 402 : Прочитать();",
+                    is_wait=False,
+                ),
+                ParticipantWait(
+                    ts_str="t2",
+                    ts=datetime.now(),
+                    connect_id="1",
+                    context="Модуль.ПроцедураА\nОжидЖертвы : 404 : Метод();",
+                    is_wait=True,
+                ),
+            ],
+        ),
+        participant2=Participant(
+            connect_id="2",
+            role="Участник 2",
+            waits=[
+                ParticipantWait(
+                    ts_str="t3",
+                    ts=datetime.now(),
+                    connect_id="2",
+                    context="Модуль.ПроцедураБ\nБлокВиновника : 402 : Прочитать();",
+                    is_wait=False,
+                ),
+                ParticipantWait(
+                    ts_str="t4",
+                    ts=datetime.now(),
+                    connect_id="2",
+                    context="Модуль.ПроцедураБ\nОжидВиновника : 404 : Метод();",
+                    is_wait=True,
+                ),
+            ],
+        ),
+        timeline=[
+            TimelineEvent(
+                time="2026-06-05 11:13:30.049010",
+                role="Участник 1 (Жертва)",
+                label="locks",
+                is_wait=False,
+                event_id="b1",
+                wait=ParticipantWait(
+                    ts_str="t1",
+                    ts=datetime.now(),
+                    connect_id="1",
+                    context="Модуль.ПроцедураА\nБлокЖертвы : 402 : Прочитать();",
+                    is_wait=False,
+                ),
+            ),
+            TimelineEvent(
+                time="2026-06-05 11:13:49.259004",
+                role="Участник 1 (Жертва)",
+                label="locks",
+                is_wait=True,
+                event_id="w1",
+                wait=ParticipantWait(
+                    ts_str="t2",
+                    ts=datetime.now(),
+                    connect_id="1",
+                    context="Модуль.ПроцедураА\nОжидЖертвы : 404 : Метод();",
+                    is_wait=True,
+                ),
+            ),
+            TimelineEvent(
+                time="2026-06-05 11:13:39.007010",
+                role="Участник 2",
+                label="locks",
+                is_wait=False,
+                event_id="b2",
+                wait=ParticipantWait(
+                    ts_str="t3",
+                    ts=datetime.now(),
+                    connect_id="2",
+                    context="Модуль.ПроцедураБ\nБлокВиновника : 402 : Прочитать();",
+                    is_wait=False,
+                ),
+            ),
+            TimelineEvent(
+                time="2026-06-05 11:13:49.260017",
+                role="Участник 2",
+                label="locks",
+                is_wait=True,
+                event_id="w2",
+                wait=ParticipantWait(
+                    ts_str="t4",
+                    ts=datetime.now(),
+                    connect_id="2",
+                    context="Модуль.ПроцедураБ\nОжидВиновника : 404 : Метод();",
+                    is_wait=True,
+                ),
+            ),
+        ],
+    )
+    matrix = build_cross_matrix_contexts(case)
+    assert "Участник 1 (Жертва)" in matrix
+    assert "Участник 2" in matrix
+    assert "Блокировка" in matrix
+    assert "Ожидание" in matrix
+    assert "БлокЖертвы : 402 : Прочитать();" in matrix
+    assert "ОжидЖертвы : 404 : Метод();" in matrix
+    assert "БлокВиновника : 402 : Прочитать();" in matrix
+    assert "ОжидВиновника : 404 : Метод();" in matrix
 
 
 def test_cross_matrix_nonempty():

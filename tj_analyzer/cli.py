@@ -20,6 +20,8 @@ from tj_common.cli_shared import (
     build_deadlock_filters,
     build_filters,
     format_filter_summary,
+    print_report_paths,
+    write_unified_analysis_reports,
 )
 from tj_common.report.unified import render_unified_json, render_unified_text
 from tj_common.sources.unified_file import (
@@ -93,6 +95,11 @@ def main(
         None, "--config-catalog", help="1C config export for TDEADLOCK context trees"
     ),
     output: OutputType = typer.Option(OutputType.both, "--output"),
+    report_dir: Optional[str] = typer.Option(
+        None,
+        "--report-dir",
+        help="Write analysis.json, analysis.md, analysis.html to this directory",
+    ),
 ):
     """Run TLOCK, TTIMEOUT, and TDEADLOCK analysis with shared filters."""
     if ctx.invoked_subcommand is not None:
@@ -177,12 +184,24 @@ def main(
     if s["total_errors"]:
         console.print(f"[yellow]Errors: {s['total_errors']}[/yellow]")
 
-    if output in (OutputType.json, OutputType.both):
-        console.print(render_unified_json(result))
-    if output in (OutputType.text, OutputType.both):
-        if output == OutputType.both:
-            console.print("\n" + "=" * 40 + " TEXT REPORT " + "=" * 40 + "\n")
-        console.print(render_unified_text(result))
+    meta = format_filter_summary(tlock_filters, source)
+
+    if report_dir:
+        paths = write_unified_analysis_reports(
+            report_dir,
+            result,
+            log_ids=tlock_filters.log_ids,
+            database=database,
+            meta=meta,
+        )
+        print_report_paths(console, paths)
+    else:
+        if output in (OutputType.json, OutputType.both):
+            console.print(render_unified_json(result))
+        if output in (OutputType.text, OutputType.both):
+            if output == OutputType.both:
+                console.print("\n" + "=" * 40 + " TEXT REPORT " + "=" * 40 + "\n")
+            console.print(render_unified_text(result))
 
 
 def app_entry():

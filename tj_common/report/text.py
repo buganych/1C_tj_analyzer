@@ -4,9 +4,12 @@ from __future__ import annotations
 
 from tj_common.models import AnalysisResult, CulpritAnalysis, CulpritTlockRow
 from tj_common.report.event_report import (
+    VICTIM_TABLE_HEADERS,
     _conflict_tlock_rows,
     _tx_duration_sec,
-    _victim_table_rows,
+    _victim_main_cells,
+    format_lock_resources,
+    format_space_label,
     normalize_context,
 )
 from tj_common.report.labels import ReportLabels, TLOCK_LABELS
@@ -22,6 +25,35 @@ def _plain_table(headers: list[str], rows: list[list[str]]) -> list[str]:
     lines = [sep, "-+-".join("-" * w for w in widths)]
     for row in rows:
         lines.append(" | ".join(str(row[i]).ljust(widths[i]) for i in range(len(headers))))
+    return lines
+
+
+def _plain_victim_sections(victim) -> list[str]:
+    ev = victim.event
+    lines: list[str] = []
+    lines.extend(_plain_table([*VICTIM_TABLE_HEADERS], [_victim_main_cells(victim)]))
+    lines.append("")
+    resources = format_lock_resources(ev.regions, ev.locks)
+    if resources:
+        lines.extend(_plain_context("Ресурсы", resources))
+    context = normalize_context(ev.context)
+    if context:
+        lines.extend(_plain_context("Контекст", context))
+    return lines
+
+
+def _plain_tlock_resources_sections(rows: list[CulpritTlockRow]) -> list[str]:
+    lines: list[str] = []
+    seen: set[tuple[str, str]] = set()
+    for row in rows:
+        body = format_lock_resources(row.regions, row.locks)
+        if not body:
+            continue
+        key = (format_ts(row.timestamp), body)
+        if key in seen:
+            continue
+        seen.add(key)
+        lines.extend(_plain_context(f"Ресурсы TLOCK {format_ts(row.timestamp)}", body))
     return lines
 
 
@@ -75,20 +107,20 @@ def _format_culprit_text(c: CulpritAnalysis) -> list[str]:
         lines.append("  TLOCK с пересечением")
         lines.extend(
             _plain_table(
-                ["Время", "Длительность", "Тип", "Пространство", "Ресурсы"],
+                ["Время", "Длительность", "Тип", "Пространство"],
                 [
                     [
                         format_ts(r.timestamp),
                         f"{r.duration_sec:.6f}",
                         r.conflict_type,
-                        r.regions,
-                        r.locks,
+                        format_space_label(r.regions),
                     ]
                     for r in conflict_rows
                 ],
             )
         )
         lines.append("")
+        lines.extend(_plain_tlock_resources_sections(conflict_rows))
         lines.extend(_plain_tlock_context_sections(conflict_rows))
     elif c.big_transaction:
         lines.append(
@@ -102,19 +134,19 @@ def _format_culprit_text(c: CulpritAnalysis) -> list[str]:
         if c.tx_tlocks_all:
             lines.extend(
                 _plain_table(
-                    ["Время", "Длительность", "Пространство", "Ресурсы"],
+                    ["Время", "Длительность", "Пространство"],
                     [
                         [
                             format_ts(r.timestamp),
                             f"{r.duration_sec:.6f}",
-                            r.regions,
-                            r.locks,
+                            format_space_label(r.regions),
                         ]
                         for r in c.tx_tlocks_all
                     ],
                 )
             )
             lines.append("")
+            lines.extend(_plain_tlock_resources_sections(c.tx_tlocks_all))
             lines.extend(_plain_tlock_context_sections(c.tx_tlocks_all))
         else:
             lines.append("    (нет TLOCK в транзакции)")
@@ -150,21 +182,7 @@ def render_text(
         parts.append(f"--- Событие #{idx} ---")
         parts.append("")
         parts.append("Жертва")
-        parts.extend(
-            _plain_table(
-                [
-                    "Соединение",
-                    "Время",
-                    "Длительность",
-                    "Виновник",
-                    "Регион",
-                    "Locks",
-                ],
-                _victim_table_rows(victim),
-            )
-        )
-        parts.append("")
-        parts.extend(_plain_context("Контекст жертвы", victim.event.context))
+        parts.extend(_plain_victim_sections(victim))
 
         if victim.parse_error:
             parts.append(f"Ошибка: {victim.parse_error}")

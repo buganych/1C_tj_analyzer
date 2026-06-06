@@ -72,4 +72,5 @@ def test_markdown_shows_intersection_tlocks():
     assert "BEGIN" not in md
     assert "END" not in md
     assert "CULPRIT_TLOCK" in md
+    assert "**Ресурсы**" in md
     assert "**Контекст TLOCK**" in md

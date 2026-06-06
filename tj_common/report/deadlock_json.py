@@ -26,6 +26,7 @@ def _case_to_dict(case: DeadlockCase) -> dict[str, Any]:
         "participant_count": case.participant_count,
         "deadlock_type": case.deadlock_type,
         "cross_matrix": case.cross_matrix,
+        "cross_matrix_contexts": case.cross_matrix_contexts,
         "text_graph": case.text_graph,
         "timeline_text": case.timeline_text,
         "participants": [

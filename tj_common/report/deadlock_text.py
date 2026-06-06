@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from tj_common.analysis.deadlock import deadlock_context_matrix_columns
 from tj_common.models_deadlock import DeadlockAnalysisResult
 
 
@@ -37,6 +38,22 @@ def render_deadlock_text(result: DeadlockAnalysisResult) -> str:
             parts.append("")
             parts.append("Граф захвата ресурсов:")
             parts.append(case.cross_matrix)
+
+        context_columns = deadlock_context_matrix_columns(case)
+        if context_columns and any(
+            block or wait for _, block, wait in context_columns
+        ):
+            parts.append("")
+            parts.append("Граф захвата ресурсов по контекстам:")
+            if case.cross_matrix_contexts:
+                parts.append(case.cross_matrix_contexts)
+            else:
+                titles = [title for title, _, _ in context_columns]
+                block_cells = [block or "—" for _, block, _ in context_columns]
+                wait_cells = [wait or "—" for _, _, wait in context_columns]
+                parts.append("\t".join([""] + titles))
+                parts.append("\t".join(["Блокировка", *block_cells]))
+                parts.append("\t".join(["Ожидание", *wait_cells]))
 
         if case.timeline_text:
             parts.append("")

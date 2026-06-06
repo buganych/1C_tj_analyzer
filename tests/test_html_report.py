@@ -7,7 +7,7 @@ from tj_common.analysis.pipeline import run_analysis
 from tj_common.analysis.unified_pipeline import UnifiedAnalysisResult
 from tj_common.models import QueryFilters, TjEvent
 from tj_common.models_deadlock import DeadlockQueryFilters, TdeadlockEvent
-from tj_common.report.html import render_event_html, render_unified_html
+from tj_common.report.html import format_meta_html, render_event_html, render_unified_html
 from tj_common.sources.deadlock_memory import DeadlockMemorySource
 from tj_common.sources.memory import MemoryLogSource
 
@@ -57,11 +57,45 @@ def _scenario() -> MemoryLogSource:
     return MemoryLogSource(events)
 
 
+def test_meta_bar_renders_filter_badges():
+    html_out = format_meta_html(
+        "Source=plain period=all database=ex_burm_lock min_duration=0.0s"
+    )
+    assert 'class="meta-bar"' in html_out
+    assert "Источник" in html_out
+    assert "Файл ТЖ" in html_out
+    assert "База" in html_out
+    assert "ex_burm_lock" in html_out
+    assert html_out.count("ex_burm_lock") == 1
+
+
+def test_unified_html_has_stat_cards_and_summary_grid():
+    result = run_analysis(_scenario(), QueryFilters(log_ids=[LOG_ID]))
+    page = render_unified_html(
+        UnifiedAnalysisResult(tlock=result),
+        meta="Source=plain period=all database=ex_burm_lock min_duration=0.0s",
+    )
+    assert 'class="stat-grid"' in page
+    assert 'class="stat-card stat-tlock"' in page
+    assert 'class="summary-grid"' in page
+    assert 'class="summary-card"' in page
+    assert 'class="meta-bar"' in page
+
+
 def test_html_has_toc_and_anchor_links():
     result = run_analysis(_scenario(), QueryFilters(log_ids=[LOG_ID]))
     page = render_event_html(result, doc_title="Test report")
     assert "<nav class=\"toc\">" in page
     assert "Оглавление" in page
+    assert 'class="toc-toggle"' in page
+    assert 'class="toc-toggle-icon"' in page
+    assert 'class="sidebar"' in page
+    assert "toggleToc" in page
+    assert "TOC_ICON_COLLAPSE" in page
+    assert 'aria-label="Скрыть оглавление"' in page
+    assert "toc-collapsed" in page
+    assert "compact-table" in page
+    assert "table-fit" in page
     assert 'href="#' in page
     assert "Событие #1" in page
     assert "CULPRIT_CTX" in page
@@ -69,6 +103,8 @@ def test_html_has_toc_and_anchor_links():
     assert 'class="tlock-table"' in page
     assert "<details>" in page
     assert "<summary>Контекст</summary>" in page
+    assert page.count("<summary>Ресурсы</summary>") >= 2
+    assert "    Fld" in page or "Exclusive" in page
     assert "Контекст TLOCK" not in page
 
 
@@ -166,3 +202,5 @@ def test_deadlock_timeline_rendered_as_table():
     assert "Ожидание" in page
     assert "P1_WAIT_CTX" in page
     assert "<summary>Контекст</summary>" in page
+    assert "Граф захвата ресурсов по контекстам" in page
+    assert 'class="deadlock-context-matrix"' in page

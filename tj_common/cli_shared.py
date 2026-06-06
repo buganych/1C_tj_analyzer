@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from enum import Enum
+from pathlib import Path
 from typing import Optional
 
 import typer
@@ -14,6 +15,13 @@ from tj_common.sources.clickhouse import ClickHouseSource
 from tj_common.sources.deadlock_clickhouse import DeadlockClickHouseSource
 from tj_common.sources.json_file import load_json_file
 from tj_common.sources.plain import load_plain_file
+from tj_common.analysis.unified_pipeline import UnifiedAnalysisResult
+from tj_common.models import AnalysisResult
+from tj_common.models_deadlock import DeadlockAnalysisResult
+from tj_common.report.html import render_event_html, render_unified_html
+from tj_common.report.labels import ReportLabels
+from tj_common.report.unified import render_unified_json, render_unified_markdown
+from tj_common.report.write import resolve_report_dir, write_triple_reports
 from tj_common.utils import clickhouse_config_from_env, parse_datetime
 
 
@@ -168,6 +176,100 @@ def build_file_source(
     if source == SourceType.plain:
         return load_plain_file(file, base_date=bd, victim_event=victim_event)
     return load_json_file(file, victim_event=victim_event)
+
+
+def write_victim_analysis_reports(
+    report_dir: str,
+    result: AnalysisResult,
+    *,
+    render_json,
+    render_markdown,
+    labels: ReportLabels,
+    log_ids: list[str] | None = None,
+    database: str | None = None,
+    meta: str = "",
+) -> dict[str, Path]:
+    directory = resolve_report_dir(
+        report_dir,
+        log_ids=log_ids,
+        database=database,
+        analyzer=labels.json_event_type.lower(),
+    )
+    return write_triple_reports(
+        directory,
+        json_body=render_json(result, labels=labels),
+        md_body=render_markdown(result, labels=labels),
+        html_body=render_event_html(
+            result,
+            labels=labels,
+            doc_title=labels.title,
+            meta=meta,
+        ),
+    )
+
+
+def write_deadlock_analysis_reports(
+    report_dir: str,
+    result: DeadlockAnalysisResult,
+    *,
+    render_json,
+    log_ids: list[str] | None = None,
+    database: str | None = None,
+    meta: str = "",
+) -> dict[str, Path]:
+    from tj_common.report.deadlock_markdown import render_deadlock_markdown
+
+    directory = resolve_report_dir(
+        report_dir,
+        log_ids=log_ids,
+        database=database,
+        analyzer="tdeadlock",
+    )
+    unified = UnifiedAnalysisResult(tdeadlock=result)
+    paths = write_triple_reports(
+        directory,
+        json_body=render_json(result),
+        md_body=render_deadlock_markdown(result),
+        html_body=render_unified_html(
+            unified,
+            doc_title="Анализ TDEADLOCK",
+            meta=meta,
+        ),
+    )
+    return paths
+
+
+def write_unified_analysis_reports(
+    report_dir: str,
+    result: UnifiedAnalysisResult,
+    *,
+    log_ids: list[str] | None = None,
+    database: str | None = None,
+    meta: str = "",
+) -> dict[str, Path]:
+    directory = resolve_report_dir(
+        report_dir,
+        log_ids=log_ids,
+        database=database,
+        analyzer="tj_analyzer",
+    )
+    return write_triple_reports(
+        directory,
+        json_body=render_unified_json(result),
+        md_body=render_unified_markdown(result),
+        html_body=render_unified_html(
+            result,
+            doc_title="Сводный анализ проблем блокировок 1С",
+            meta=meta,
+        ),
+    )
+
+
+def print_report_paths(console, paths: dict[str, Path]) -> None:
+    ordered = [paths[k] for k in ("json", "md", "html") if k in paths]
+    console.print("[green]Reports written:[/green]")
+    for path in ordered:
+        console.print(f"  {path}")
 
 
 def print_victim_analysis_output(

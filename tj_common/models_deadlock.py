@@ -115,6 +115,7 @@ class DeadlockCase:
     status_detail: str = ""
     deadlock_type: str = ""
     cross_matrix: str = ""
+    cross_matrix_contexts: str = ""
     text_graph: str = ""
     timeline_text: str = ""
     graph_wait_block: dict[str, Any] = field(default_factory=dict)
