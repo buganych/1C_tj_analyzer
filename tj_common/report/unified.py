@@ -18,6 +18,10 @@ from tj_common.report.summary_render import (
 )
 from tj_common.report.summary_stats import collect_summary_tables
 from tj_common.report.text import render_text
+from tj_common.report.unresolved import (
+    append_logcfg_section_markdown,
+    append_logcfg_section_text,
+)
 
 
 def unified_to_dict(result: UnifiedAnalysisResult) -> dict[str, Any]:
@@ -58,20 +62,34 @@ def render_unified_text(result: UnifiedAnalysisResult) -> str:
     if result.skipped:
         parts.append(f"Пропущено: {', '.join(result.skipped)}")
     parts.extend(render_summary_tables_text(collect_summary_tables(result)))
+    if result.tlock is not None:
+        append_logcfg_section_text(parts, result.tlock)
 
     if result.tlock is not None:
         parts.append("")
         parts.append("#" * 60)
         parts.append("# TLOCK")
         parts.append("#" * 60)
-        parts.append(render_text(result.tlock, labels=TLOCK_LABELS))
+        parts.append(
+            render_text(
+                result.tlock,
+                labels=TLOCK_LABELS,
+                include_logcfg_section=False,
+            )
+        )
 
     if result.ttimeout is not None:
         parts.append("")
         parts.append("#" * 60)
         parts.append("# TTIMEOUT")
         parts.append("#" * 60)
-        parts.append(render_text(result.ttimeout, labels=TTIMEOUT_LABELS))
+        parts.append(
+            render_text(
+                result.ttimeout,
+                labels=TTIMEOUT_LABELS,
+                include_logcfg_section=False,
+            )
+        )
 
     if result.tdeadlock is not None:
         parts.append("")
@@ -101,13 +119,27 @@ def render_unified_markdown(result: UnifiedAnalysisResult) -> str:
         parts.append(f"- Пропущено: {', '.join(result.skipped)}")
     parts.append("")
     parts.extend(render_summary_tables_markdown(collect_summary_tables(result)))
+    if result.tlock is not None:
+        append_logcfg_section_markdown(parts, result.tlock)
 
     if result.tlock is not None:
-        parts.append(render_markdown(result.tlock, labels=TLOCK_LABELS))
+        parts.append(
+            render_markdown(
+                result.tlock,
+                labels=TLOCK_LABELS,
+                include_logcfg_section=False,
+            )
+        )
         parts.append("")
 
     if result.ttimeout is not None:
-        parts.append(render_markdown(result.ttimeout, labels=TTIMEOUT_LABELS))
+        parts.append(
+            render_markdown(
+                result.ttimeout,
+                labels=TTIMEOUT_LABELS,
+                include_logcfg_section=False,
+            )
+        )
         parts.append("")
 
     if result.tdeadlock is not None:

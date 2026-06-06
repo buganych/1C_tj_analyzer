@@ -22,6 +22,13 @@ def _memory_source() -> MemoryLogSource:
     return MemoryLogSource(
         [
             TjEvent(
+                ts=base - timedelta(seconds=30),
+                event="SDBL",
+                connect_id="500546",
+                func="BeginTransaction",
+                log_id=LOG_ID,
+            ),
+            TjEvent(
                 ts=base - timedelta(seconds=5),
                 event="TLOCK",
                 connect_id="500546",
@@ -39,6 +46,13 @@ def _memory_source() -> MemoryLogSource:
                 locks=LOCKS,
                 duration_us=1_000_000,
                 context="VICTIM",
+                log_id=LOG_ID,
+            ),
+            TjEvent(
+                ts=base + timedelta(seconds=10),
+                event="SDBL",
+                connect_id="500546",
+                func="CommitTransaction",
                 log_id=LOG_ID,
             ),
         ]
@@ -92,6 +106,39 @@ def test_write_victim_analysis_reports(tmp_path):
     assert "<html" in paths["html"].read_text(encoding="utf-8")
 
 
+def test_write_victim_analysis_reports_skips_logcfg_when_resolved(tmp_path):
+    result = run_analysis(_memory_source(), QueryFilters(log_ids=[LOG_ID]))
+    paths = write_victim_analysis_reports(
+        str(tmp_path),
+        result,
+        render_json=render_json,
+        render_markdown=render_markdown,
+        labels=TLOCK_LABELS,
+        log_ids=[LOG_ID],
+        logcfg_location_path=r"D:\TJ\locks",
+    )
+    assert "logcfg" not in paths
+
+
+def test_write_victim_analysis_reports_includes_logcfg_for_unresolved(tmp_path):
+    from tests.test_unresolved_report import _tx_error_scenario
+
+    result = run_analysis(_tx_error_scenario(), QueryFilters(log_ids=["unresolved_test"]))
+    paths = write_victim_analysis_reports(
+        str(tmp_path),
+        result,
+        render_json=render_json,
+        render_markdown=render_markdown,
+        labels=TLOCK_LABELS,
+        log_ids=["unresolved_test"],
+        logcfg_location_path=r"D:\TJ\locks",
+    )
+    assert "logcfg" in paths
+    assert paths["logcfg"].name == "logcfg.xml"
+    assert "InfoRg10053.DIMS" in paths["logcfg"].read_text(encoding="utf-8")
+    assert r'D:\TJ\locks' in paths["logcfg"].read_text(encoding="utf-8")
+
+
 def test_write_unified_analysis_reports(tmp_path):
     source = _memory_source()
     unified = run_unified_analysis(
@@ -107,3 +154,4 @@ def test_write_unified_analysis_reports(tmp_path):
     assert '"analyzer": "unified"' in paths["json"].read_text(encoding="utf-8")
     assert "Сводный анализ" in paths["md"].read_text(encoding="utf-8")
     assert "Оглавление" in paths["html"].read_text(encoding="utf-8")
+    assert "logcfg" not in paths

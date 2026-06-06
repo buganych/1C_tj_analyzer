@@ -118,6 +118,17 @@ class VictimAnalysis:
 
 
 @dataclass
+class UnresolvedLock:
+    """TLOCK/TTIMEOUT victim case that could not be fully analyzed."""
+
+    timestamp: datetime
+    regions: str
+    reason: str
+    duration_us: int = 0
+
+
+@dataclass
 class AnalysisResult:
     victims: list[VictimAnalysis] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+    unresolved: list[UnresolvedLock] = field(default_factory=list)

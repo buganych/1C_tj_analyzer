@@ -38,6 +38,18 @@
 tj_analyzer --only tlock,tdeadlock   # без TTIMEOUT
 ```
 
+### Настройка ТЖ (logcfg) по наблюдаемым TLOCK
+
+```
+Собери настройку ТЖ по TLOCK с WaitConnections для log_id …
+→ python -m tlock_logcfg
+```
+
+```
+python -m tlock_logcfg --source click --log-id <LOG_ID> \
+  --location-path "D:\TJ\locks" -o reports/<LOG_ID>_logcfg.xml
+```
+
 ## Команды
 
 | Задача | Команда |
@@ -46,6 +58,7 @@ tj_analyzer --only tlock,tdeadlock   # без TTIMEOUT
 | Только TLOCK | `python -m tlock_analyzer` |
 | Только TTIMEOUT | `python -m ttimeout_analyzer` |
 | Только TDEADLOCK | `python -m tdeadlock_analyzer` |
+| **Настройка ТЖ (logcfg)** | `python -m tlock_logcfg` |
 
 ```bash
 python -m tj_analyzer --source click --log-id <LOG_ID> --report-dir reports
@@ -61,5 +74,6 @@ python -m tj_analyzer --source click --log-id <LOG_ID> --report-dir reports
 | TLOCK | [tlock-analyzer.mdc](.cursor/rules/tlock-analyzer.mdc) | [tlock-analyzer/SKILL.md](.cursor/skills/tlock-analyzer/SKILL.md) |
 | TTIMEOUT | [ttimeout-analyzer.mdc](.cursor/rules/ttimeout-analyzer.mdc) | [ttimeout-analyzer/SKILL.md](.cursor/skills/ttimeout-analyzer/SKILL.md) |
 | TDEADLOCK | [tdeadlock-analyzer.mdc](.cursor/rules/tdeadlock-analyzer.mdc) | [tdeadlock-analyzer/SKILL.md](.cursor/skills/tdeadlock-analyzer/SKILL.md) |
+| Настройка ТЖ (logcfg) | [tlock-logcfg.mdc](.cursor/rules/tlock-logcfg.mdc) | [tlock-logcfg/SKILL.md](.cursor/skills/tlock-logcfg/SKILL.md) |
 
 [README.md](README.md)

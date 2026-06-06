@@ -18,8 +18,11 @@ alwaysApply: true
 | Только **таймауты TTIMEOUT** | `python -m ttimeout_analyzer` | TTIMEOUT, таймаут ожидания, «истёк таймаут» |
 | Только **взаимоблокировки TDEADLOCK** | `python -m tdeadlock_analyzer` | TDEADLOCK, deadlock, DeadlockConnectionIntersections, цикл, граф дедлока |
 | **Подмножество** типов | `python -m tj_analyzer --only ...` | «только tlock и дедлок», «без таймаутов» |
+| **Настройка ТЖ (logcfg)** по TLOCK | `python -m tlock_logcfg` | logcfg, настройка ТЖ, regions для мониторинга, `logcfg_шаблон.xml` |
 
 Если сомневаешься и запрос общий («разбери блокировки в ТЖ», «найди проблемы») — используй **`tj_analyzer`**.
+
+Если нужен **конфиг сбора ТЖ**, а не анализ виновников — **`tlock_logcfg`**, см. [tlock-logcfg.mdc](tlock-logcfg.mdc).
 
 ## Примеры формулировок → команда
 
@@ -33,6 +36,9 @@ alwaysApply: true
 - «Только TLOCK» / «ожидания без таймаутов» → `tlock_analyzer` или `tj_analyzer --only tlock`
 - «Только таймауты» / «TTIMEOUT» → `ttimeout_analyzer` или `tj_analyzer --only ttimeout`
 - «Только взаимоблокировки» / «дедлок» → `tdeadlock_analyzer` или `tj_analyzer --only tdeadlock`
+
+**Настройка ТЖ:**
+- «Собери logcfg» / «настройка ТЖ по regions» / «мониторинг блокировок» → `tlock_logcfg`
 
 ## Общие параметры CLI
 
@@ -68,6 +74,10 @@ python -m tj_analyzer --source click --log-id <LOG_ID> --only tlock,ttimeout --r
 python -m tlock_analyzer --source click --log-id <LOG_ID> --report-dir reports
 python -m ttimeout_analyzer --source click --log-id <LOG_ID> --report-dir reports
 python -m tdeadlock_analyzer --source click --log-id <LOG_ID> --report-dir reports
+
+# Настройка ТЖ по наблюдаемым TLOCK (не отчёт анализа)
+python -m tlock_logcfg --source click --log-id <LOG_ID> \
+  --location-path "D:\TJ\locks" -o reports/<LOG_ID>_logcfg.xml
 ```
 
 ## Таблицы ClickHouse
@@ -92,6 +102,7 @@ SELECT count() FROM onec_logs.tj_tdeadlock WHERE log_id = '<LOG_ID>';
 - TLOCK: [.cursor/rules/tlock-analyzer.mdc](tlock-analyzer.mdc)
 - TTIMEOUT: [.cursor/rules/ttimeout-analyzer.mdc](ttimeout-analyzer.mdc)
 - TDEADLOCK: [.cursor/rules/tdeadlock-analyzer.mdc](tdeadlock-analyzer.mdc)
+- Настройка ТЖ (logcfg): [.cursor/rules/tlock-logcfg.mdc](tlock-logcfg.mdc)
 - Отчёты JSON/MD/HTML: [.cursor/rules/report-output.mdc](report-output.mdc)
 
 Подробности: [README.md](README.md), [AGENTS.md](AGENTS.md).

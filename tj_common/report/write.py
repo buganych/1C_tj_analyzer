@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 
 REPORT_STEM = "analysis"
+LOGCFG_STEM = "logcfg"
 
 
 def _safe_token(value: str, *, max_len: int = 40) -> str:
@@ -59,4 +60,13 @@ def write_triple_reports(
     paths["json"].write_text(json_body, encoding="utf-8")
     paths["md"].write_text(md_body, encoding="utf-8")
     paths["html"].write_text(html_body, encoding="utf-8")
+    return paths
+
+
+def attach_logcfg_to_report_paths(
+    paths: dict[str, Path],
+    logcfg_path: Path | None,
+) -> dict[str, Path]:
+    if logcfg_path is not None:
+        paths["logcfg"] = logcfg_path
     return paths

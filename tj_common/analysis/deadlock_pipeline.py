@@ -4,6 +4,12 @@ from __future__ import annotations
 
 import uuid
 
+from tj_common.analysis.progress import (
+    AnalysisProgress,
+    ProgressTracker,
+    iter_batches,
+    should_report_progress,
+)
 from tj_common.analysis.deadlock import (
     ROLE_P2,
     ROLE_P3,
@@ -226,13 +232,39 @@ def run_deadlock_analysis(
     source: DeadlockDataSource,
     filters: DeadlockQueryFilters,
     config_catalog: str | None = None,
+    *,
+    progress: AnalysisProgress | None = None,
 ) -> DeadlockAnalysisResult:
+    events = source.fetch_tdeadlocks(filters)
     result = DeadlockAnalysisResult()
-    for event in source.fetch_tdeadlocks(filters):
-        try:
-            result.cases.append(
-                analyze_case(source, event, config_catalog=config_catalog)
-            )
-        except Exception as exc:
-            result.errors.append(f"{event.ts} connect={event.connect_id}: {exc}")
+    if not events:
+        return result
+
+    tracker: ProgressTracker | None = None
+    batch_size = len(events)
+    if should_report_progress(len(events), progress):
+        assert progress is not None
+        batch_size = progress.batch_size
+        tracker = ProgressTracker(
+            len(events),
+            label=progress.label,
+            status_interval_sec=progress.status_interval_sec,
+            emit=progress.emit,
+        )
+
+    for batch in iter_batches(events, batch_size):
+        for event in batch:
+            try:
+                result.cases.append(
+                    analyze_case(source, event, config_catalog=config_catalog)
+                )
+                if tracker:
+                    tracker.tick()
+            except Exception as exc:
+                result.errors.append(f"{event.ts} connect={event.connect_id}: {exc}")
+                if tracker:
+                    tracker.tick(error=True)
+
+    if tracker:
+        tracker.finish()
     return result

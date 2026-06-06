@@ -14,6 +14,7 @@ from tj_common.cli_shared import (
     build_deadlock_clickhouse_source,
     build_deadlock_filters,
     format_deadlock_filter_summary,
+    make_analysis_progress,
     print_report_paths,
     write_deadlock_analysis_reports,
 )
@@ -111,7 +112,10 @@ def main(
     console.print(f"[dim]{format_deadlock_filter_summary(filters, source)}[/dim]")
 
     result = run_deadlock_analysis(
-        log_source, filters, config_catalog=config_catalog
+        log_source,
+        filters,
+        config_catalog=config_catalog,
+        progress=make_analysis_progress(console, "TDEADLOCK"),
     )
 
     console.print(f"[green]Cases found: {len(result.cases)}[/green]")

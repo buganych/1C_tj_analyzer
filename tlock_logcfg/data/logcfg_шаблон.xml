@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns="http://v8.1c.ru/v8/tech-log">
+  <dump create="true" location="!!!ПУТЬ!!!\Dump" type="3" prntscrn="false" externaldump="false"/>
+  <log location="!!!ПУТЬ!!!\locks_problems" history="8" format="json" compress="zip">
+    <event>
+      <eq property="name" value="SCALL"/>
+	  <eq property="MName" value="onBeginTransaction"/>
+    </event>
+	<event>
+      <eq property="name" value="SCALL"/>
+	  <eq property="MName" value="onCommitTransaction"/>
+    </event>
+	<event>
+      <eq property="name" value="SCALL"/>
+	  <eq property="MName" value="onRollbackTransaction"/>
+    </event>
+	<event>
+      <eq property="name" value="SDBL"/>
+	  <like property="Func" value="%Transaction"/>
+    </event>
+	 
+	<event>
+      <eq property="name" value="TLOCK"/>
+	  <eq property="regions" value="<regions>"/>
+    </event>
+    <property name="all"/>
+  </log>
+  
+</config>

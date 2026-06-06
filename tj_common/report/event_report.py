@@ -13,6 +13,10 @@ from tj_common.models import (
     VictimAnalysis,
 )
 from tj_common.report.labels import ReportLabels
+from tj_common.report.unresolved import (
+    append_logcfg_section_markdown,
+    append_unresolved_table_markdown,
+)
 from tj_common.utils import format_ts
 
 CONFLICT_LABELS = {
@@ -309,7 +313,10 @@ def _format_culprit_markdown(c: CulpritAnalysis) -> list[str]:
 
 
 def render_event_markdown(
-    result: AnalysisResult, labels: ReportLabels
+    result: AnalysisResult,
+    labels: ReportLabels,
+    *,
+    include_logcfg_section: bool = True,
 ) -> str:
     parts: list[str] = []
     parts.append(f"# {labels.title}")
@@ -330,11 +337,8 @@ def render_event_markdown(
         for c in victim.culprits:
             parts.extend(_format_culprit_markdown(c))
 
-    if result.errors:
-        parts.append("## Ошибки обработки")
-        parts.append("")
-        for err in result.errors:
-            parts.append(f"- {err}")
-        parts.append("")
+    append_unresolved_table_markdown(parts, result)
+    if include_logcfg_section:
+        append_logcfg_section_markdown(parts, result)
 
     return "\n".join(parts)

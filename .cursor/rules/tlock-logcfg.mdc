@@ -1,0 +1,71 @@
+---
+description: Генерация logcfg.xml (настройка ТЖ) по наблюдаемым TLOCK с WaitConnections — regions, мониторинг блокировок
+alwaysApply: true
+---
+
+# tlock_logcfg — настройка ТЖ по проблемам блокировок
+
+**Маршрутизация анализаторов:** [.cursor/rules/lock-analyzers.mdc](lock-analyzers.mdc)
+
+## Когда использовать
+
+Ключевые слова: **logcfg**, **настройка ТЖ**, настройка техжурнала, собрать настройку, `regions`, мониторинг блокировок, шаблон `logcfg_шаблон.xml`.
+
+Пользователь просит **сформировать конфиг сбора ТЖ** по уже наблюдаемым ожиданиям TLOCK — **не** полный анализ виновников.
+
+Если запрос на анализ блокировок (виновники, отчёт) → **`tlock_analyzer`** / **`tj_analyzer`**, не эта тулза.
+
+## Команда
+
+```bash
+# В каталог отчётов (рекомендуется — рядом с analysis.*)
+python -m tlock_logcfg --source click --log-id <LOG_ID> \
+  --location-path "D:\TJ\locks" --report-dir reports/<LOG_ID>
+
+# Или явный файл
+python -m tlock_logcfg --source click --log-id <LOG_ID> \
+  --location-path "D:\TJ\locks" -o logcfg.xml
+```
+
+При `tlock_analyzer` / `tj_analyzer` с `--report-dir` файл `logcfg.xml` создаётся автоматически **только при неразобранных блокировках**; для полного сбора по всем TLOCK — `python -m tlock_logcfg`.
+
+## Логика
+
+1. Отбор TLOCK с `wait_connections != ''` (ClickHouse `tj_tlock`, plain или json).
+2. Фильтр длительности: `--min-duration` (по умолчанию **3** сек).
+3. Уникальные `regions` → секции `<event>` в logcfg по шаблону.
+4. В комментарии: количество, среднее и максимальное ожидание (сек, целые).
+5. `--platform-version` (по умолчанию **8.3.25**): для **8.3.24 и ниже** убрать `format="json" compress="zip"` из `<log>`.
+
+## Обязательные параметры
+
+| Параметр | Назначение |
+|----------|------------|
+| `--location-path` | Путь вместо `!!!ПУТЬ!!!` в шаблоне |
+| `-o` / `--output` | Файл logcfg.xml (обязателен) |
+| `--log-id` | Для `--source click` |
+
+## Шаблоны
+
+```bash
+# ClickHouse
+python -m tlock_logcfg --source click --log-id <LOG_ID> \
+  --location-path "D:\TJ\locks" -o reports/<LOG_ID>_logcfg.xml
+
+# С фильтрами
+python -m tlock_logcfg --source click --log-id <LOG_ID> \
+  --database <IB> --from "..." --to "..." --file-like "%tlock_%" \
+  --min-duration 3 --platform-version 8.3.27 \
+  --location-path "D:\TJ\locks" -o reports/logcfg.xml
+
+# Plain / JSON
+python -m tlock_logcfg --source plain --file tj.log --base-date "2026-05-27" \
+  --location-path "D:\TJ\locks" -o logcfg.xml
+
+# Свой шаблон
+python -m tlock_logcfg ... --template logcfg_шаблон.xml ...
+```
+
+Шаблон по умолчанию: `tlock_logcfg/data/logcfg_шаблон.xml` (копия `logcfg_шаблон.xml` в корне).
+
+Skill: [.cursor/skills/tlock-logcfg/SKILL.md](../skills/tlock-logcfg/SKILL.md)

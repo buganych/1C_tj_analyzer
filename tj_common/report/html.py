@@ -22,6 +22,11 @@ from tj_common.report.event_report import (
 from tj_common.report.labels import ReportLabels, TLOCK_LABELS, TTIMEOUT_LABELS
 from tj_common.report.summary_render import render_summary_tables_html
 from tj_common.report.summary_stats import collect_summary_tables
+from tj_common.report.unresolved import (
+    render_logcfg_section_html,
+    render_unresolved_sections_html,
+    render_unresolved_table_html,
+)
 from tj_common.utils import format_ts
 
 _HTML_STYLES = """
@@ -336,6 +341,28 @@ details.summary-more summary {
 }
 details.summary-more summary:hover { text-decoration: underline; }
 details.summary-more { margin-top: 8px; }
+details.report-section {
+  margin: 16px 0 24px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  background: #fafbfc;
+}
+details.report-section summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 15px;
+  padding: 4px 0;
+  user-select: none;
+  color: var(--text);
+}
+details.report-section summary:hover { color: var(--accent); }
+details.report-section > table,
+details.report-section > .table-fit,
+details.report-section > p,
+details.report-section > pre {
+  margin-top: 12px;
+}
 table.deadlock-context-matrix {
   margin: 8px 0 16px;
 }
@@ -791,16 +818,16 @@ def render_event_html(
     *,
     doc_title: str | None = None,
     meta: str = "",
+    include_logcfg_section: bool = True,
 ) -> str:
     b = _HtmlBuilder()
     section_title = labels.title
     b.heading(2, section_title, toc_level=1)
     for idx, victim in enumerate(result.victims, 1):
         _render_victim_html(b, victim, idx)
-    if result.errors:
-        b.heading(2, "Ошибки обработки", toc_level=1)
-        for err in result.errors:
-            b.paragraph(err)
+    render_unresolved_table_html(b, result)
+    if include_logcfg_section:
+        render_logcfg_section_html(b, result)
     title = doc_title or section_title
     return b.render_document(title, meta=meta)
 
@@ -851,6 +878,9 @@ def render_unified_html(
     b.heading(2, "Сводка", toc_level=1)
     _render_summary_stats_html(b, s)
     render_summary_tables_html(b, collect_summary_tables(result))
+    if result.tlock is not None:
+        render_unresolved_table_html(b, result.tlock)
+        render_logcfg_section_html(b, result.tlock)
     if result.tlock and result.tlock.victims:
         b.raw('<hr class="section">')
         b.heading(2, TLOCK_LABELS.title, toc_level=1)

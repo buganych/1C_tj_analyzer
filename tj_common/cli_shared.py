@@ -15,13 +15,19 @@ from tj_common.sources.clickhouse import ClickHouseSource
 from tj_common.sources.deadlock_clickhouse import DeadlockClickHouseSource
 from tj_common.sources.json_file import load_json_file
 from tj_common.sources.plain import load_plain_file
+from tj_common.analysis.progress import AnalysisProgress
+from tj_common.logcfg import RegionStats, write_logcfg_report_from_stats
+from tj_common.report.unresolved import (
+    collect_logcfg_stats_for_unresolved,
+    collect_unresolved_locks,
+)
 from tj_common.analysis.unified_pipeline import UnifiedAnalysisResult
 from tj_common.models import AnalysisResult
 from tj_common.models_deadlock import DeadlockAnalysisResult
 from tj_common.report.html import render_event_html, render_unified_html
 from tj_common.report.labels import ReportLabels
 from tj_common.report.unified import render_unified_json, render_unified_markdown
-from tj_common.report.write import resolve_report_dir, write_triple_reports
+from tj_common.report.write import attach_logcfg_to_report_paths, resolve_report_dir, write_triple_reports
 from tj_common.utils import clickhouse_config_from_env, parse_datetime
 
 
@@ -36,6 +42,14 @@ class OutputType(str, Enum):
     json = "json"
     markdown = "markdown"
     both = "both"
+
+
+def make_analysis_progress(console, label: str) -> AnalysisProgress:
+    """Progress reporter: status every 10s for batches of 50 victims."""
+    return AnalysisProgress(
+        label=label,
+        emit=lambda msg: console.print(f"[cyan]{msg}[/cyan]"),
+    )
 
 
 def parse_csv(value: Optional[str]) -> list[str] | None:
@@ -178,6 +192,32 @@ def build_file_source(
     return load_json_file(file, victim_event=victim_event)
 
 
+def _write_logcfg_for_unresolved(
+    directory: Path,
+    result: AnalysisResult,
+    *,
+    location_path: str,
+    platform_version: str,
+) -> Path | None:
+    """Write logcfg.xml only when analysis left unresolved lock cases."""
+    unresolved = collect_unresolved_locks(result)
+    if not unresolved:
+        return None
+    stats = collect_logcfg_stats_for_unresolved(unresolved)
+    if not stats:
+        return None
+    region_stats = [
+        RegionStats(s.region, s.count, s.avg_wait_sec, s.max_wait_sec)
+        for s in stats
+    ]
+    return write_logcfg_report_from_stats(
+        directory,
+        region_stats,
+        location_path=location_path,
+        platform_version=platform_version,
+    )
+
+
 def write_victim_analysis_reports(
     report_dir: str,
     result: AnalysisResult,
@@ -188,6 +228,9 @@ def write_victim_analysis_reports(
     log_ids: list[str] | None = None,
     database: str | None = None,
     meta: str = "",
+    logcfg_location_path: str = "!!!ПУТЬ!!!",
+    platform_version: str = "8.3.25",
+    write_logcfg: bool = True,
 ) -> dict[str, Path]:
     directory = resolve_report_dir(
         report_dir,
@@ -195,7 +238,7 @@ def write_victim_analysis_reports(
         database=database,
         analyzer=labels.json_event_type.lower(),
     )
-    return write_triple_reports(
+    paths = write_triple_reports(
         directory,
         json_body=render_json(result, labels=labels),
         md_body=render_markdown(result, labels=labels),
@@ -206,6 +249,15 @@ def write_victim_analysis_reports(
             meta=meta,
         ),
     )
+    if write_logcfg and labels.json_event_type == "TLOCK":
+        logcfg_path = _write_logcfg_for_unresolved(
+            directory,
+            result,
+            location_path=logcfg_location_path,
+            platform_version=platform_version,
+        )
+        attach_logcfg_to_report_paths(paths, logcfg_path)
+    return paths
 
 
 def write_deadlock_analysis_reports(
@@ -246,6 +298,8 @@ def write_unified_analysis_reports(
     log_ids: list[str] | None = None,
     database: str | None = None,
     meta: str = "",
+    logcfg_location_path: str = "!!!ПУТЬ!!!",
+    platform_version: str = "8.3.25",
 ) -> dict[str, Path]:
     directory = resolve_report_dir(
         report_dir,
@@ -253,7 +307,7 @@ def write_unified_analysis_reports(
         database=database,
         analyzer="tj_analyzer",
     )
-    return write_triple_reports(
+    paths = write_triple_reports(
         directory,
         json_body=render_unified_json(result),
         md_body=render_unified_markdown(result),
@@ -263,10 +317,19 @@ def write_unified_analysis_reports(
             meta=meta,
         ),
     )
+    if result.tlock is not None:
+        logcfg_path = _write_logcfg_for_unresolved(
+            directory,
+            result.tlock,
+            location_path=logcfg_location_path,
+            platform_version=platform_version,
+        )
+        attach_logcfg_to_report_paths(paths, logcfg_path)
+    return paths
 
 
 def print_report_paths(console, paths: dict[str, Path]) -> None:
-    ordered = [paths[k] for k in ("json", "md", "html") if k in paths]
+    ordered = [paths[k] for k in ("json", "md", "html", "logcfg") if k in paths]
     console.print("[green]Reports written:[/green]")
     for path in ordered:
         console.print(f"  {path}")

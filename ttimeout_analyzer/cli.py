@@ -15,6 +15,7 @@ from tj_common.cli_shared import (
     build_file_source,
     build_filters,
     format_filter_summary,
+    make_analysis_progress,
     print_report_paths,
     print_victim_analysis_output,
     write_victim_analysis_reports,
@@ -103,7 +104,11 @@ def main(
 
     console.print(f"[dim]{format_filter_summary(filters, source)}[/dim]")
 
-    result = run_analysis(log_source, filters)
+    result = run_analysis(
+        log_source,
+        filters,
+        progress=make_analysis_progress(console, "TTIMEOUT"),
+    )
 
     console.print(f"[green]Victims found: {len(result.victims)}[/green]")
     if result.errors:

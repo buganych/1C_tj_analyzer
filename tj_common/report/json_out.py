@@ -7,6 +7,7 @@ from typing import Any
 
 from tj_common.models import AnalysisResult
 from tj_common.report.labels import ReportLabels, TLOCK_LABELS
+from tj_common.report.unresolved import unresolved_to_dict
 from tj_common.utils import format_ts
 
 
@@ -90,11 +91,13 @@ def analysis_to_dict(
                 "culprits": [_culprit_to_dict(c) for c in v.culprits],
             }
         )
-    return {
+    payload = {
         "analyzer": labels.json_event_type,
         "victims": victims,
         "errors": result.errors,
     }
+    payload.update(unresolved_to_dict(result))
+    return payload
 
 
 def _parse_wait_list(wait_connections: str) -> list[str]:

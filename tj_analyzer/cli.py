@@ -20,6 +20,7 @@ from tj_common.cli_shared import (
     build_deadlock_filters,
     build_filters,
     format_filter_summary,
+    make_analysis_progress,
     print_report_paths,
     write_unified_analysis_reports,
 )
@@ -173,6 +174,7 @@ def main(
         ttimeout_filters=ttimeout_filters if AnalyzerKind.ttimeout in kinds else None,
         tdeadlock_filters=tdeadlock_filters if AnalyzerKind.tdeadlock in kinds else None,
         config_catalog=config_catalog,
+        progress=make_analysis_progress(console, "tj_analyzer"),
     )
 
     s = result.summary

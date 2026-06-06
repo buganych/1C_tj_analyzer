@@ -19,6 +19,7 @@ tlock-analyzer = "tlock_analyzer.cli:app_entry"
 ttimeout-analyzer = "ttimeout_analyzer.cli:app_entry"
 tdeadlock-analyzer = "tdeadlock_analyzer.cli:app_entry"
 tj-analyzer = "tj_analyzer.cli:app_entry"
+tlock-logcfg = "tlock_logcfg.cli:app_entry"
 
 
 [build-system]
@@ -26,7 +27,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["tj_common", "tlock_analyzer", "ttimeout_analyzer", "tdeadlock_analyzer", "tj_analyzer"]
+packages = ["tj_common", "tlock_analyzer", "ttimeout_analyzer", "tdeadlock_analyzer", "tj_analyzer", "tlock_logcfg"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

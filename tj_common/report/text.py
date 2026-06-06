@@ -13,6 +13,10 @@ from tj_common.report.event_report import (
     normalize_context,
 )
 from tj_common.report.labels import ReportLabels, TLOCK_LABELS
+from tj_common.report.unresolved import (
+    append_logcfg_section_text,
+    append_unresolved_table_text,
+)
 from tj_common.utils import format_ts
 
 
@@ -170,7 +174,10 @@ def _format_culprit_text(c: CulpritAnalysis) -> list[str]:
 
 
 def render_text(
-    result: AnalysisResult, labels: ReportLabels = TLOCK_LABELS
+    result: AnalysisResult,
+    labels: ReportLabels = TLOCK_LABELS,
+    *,
+    include_logcfg_section: bool = True,
 ) -> str:
     parts: list[str] = []
     parts.append("=" * 60)
@@ -191,9 +198,8 @@ def render_text(
         for c in victim.culprits:
             parts.extend(_format_culprit_text(c))
 
-    if result.errors:
-        parts.append("")
-        parts.append("--- Ошибки обработки ---")
-        parts.extend(result.errors)
+    append_unresolved_table_text(parts, result)
+    if include_logcfg_section:
+        append_logcfg_section_text(parts, result)
 
     return "\n".join(parts)

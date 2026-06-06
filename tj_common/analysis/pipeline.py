@@ -12,6 +12,12 @@ from tj_common.analysis.locks import (
     locks_conflict,
     parse_lock_properties,
 )
+from tj_common.analysis.progress import (
+    AnalysisProgress,
+    ProgressTracker,
+    iter_batches,
+    should_report_progress,
+)
 from tj_common.models import (
     AnalysisResult,
     CulpritAnalysis,
@@ -19,6 +25,7 @@ from tj_common.models import (
     QueryFilters,
     TjEvent,
     TxBoundary,
+    UnresolvedLock,
     VictimAnalysis,
 )
 from tj_common.sources.base import LogSource
@@ -286,16 +293,60 @@ def analyze_victim(
     return result
 
 
-def run_analysis(source: LogSource, filters: QueryFilters) -> AnalysisResult:
+def _process_victim(
+    source: LogSource,
+    victim: TjEvent,
+    result: AnalysisResult,
+    hosts: list[str] | None,
+    tracker: ProgressTracker | None,
+) -> None:
+    try:
+        result.victims.append(analyze_victim(source, victim, hosts))
+        if tracker:
+            tracker.tick()
+    except Exception as exc:
+        result.errors.append(
+            f"{victim.ts} connect={victim.connect_id} log_id={victim.log_id}: {exc}"
+        )
+        result.unresolved.append(
+            UnresolvedLock(
+                timestamp=victim.ts,
+                regions=victim.regions,
+                reason=str(exc),
+                duration_us=victim.duration_us,
+            )
+        )
+        if tracker:
+            tracker.tick(error=True)
+
+
+def run_analysis(
+    source: LogSource,
+    filters: QueryFilters,
+    *,
+    progress: AnalysisProgress | None = None,
+) -> AnalysisResult:
     victims = source.fetch_victims(filters)
     result = AnalysisResult()
-    for victim in victims:
-        try:
-            result.victims.append(
-                analyze_victim(source, victim, filters.hosts)
-            )
-        except Exception as exc:
-            result.errors.append(
-                f"{victim.ts} connect={victim.connect_id} log_id={victim.log_id}: {exc}"
-            )
+    if not victims:
+        return result
+
+    tracker: ProgressTracker | None = None
+    batch_size = len(victims)
+    if should_report_progress(len(victims), progress):
+        assert progress is not None
+        batch_size = progress.batch_size
+        tracker = ProgressTracker(
+            len(victims),
+            label=progress.label,
+            status_interval_sec=progress.status_interval_sec,
+            emit=progress.emit,
+        )
+
+    for batch in iter_batches(victims, batch_size):
+        for victim in batch:
+            _process_victim(source, victim, result, filters.hosts, tracker)
+
+    if tracker:
+        tracker.finish()
     return result

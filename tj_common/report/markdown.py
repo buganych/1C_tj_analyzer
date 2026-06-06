@@ -8,6 +8,11 @@ from tj_common.report.labels import ReportLabels, TLOCK_LABELS
 
 
 def render_markdown(
-    result: AnalysisResult, labels: ReportLabels = TLOCK_LABELS
+    result: AnalysisResult,
+    labels: ReportLabels = TLOCK_LABELS,
+    *,
+    include_logcfg_section: bool = True,
 ) -> str:
-    return render_event_markdown(result, labels)
+    return render_event_markdown(
+        result, labels, include_logcfg_section=include_logcfg_section
+    )
